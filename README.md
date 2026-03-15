@@ -32,20 +32,20 @@ zbik-agents/
 |                                        (typing, testing, docstrings, security, ethics)
 |
 |-- roles/                           <-- L1 Role Archetypes (coordination, design, governance)
-|   |-- business-analyst.md              Initiates all projects. Research-first. 3 solution tiers.
+|   |-- business_analyst.md              Initiates all projects. Research-first. 3 solution tiers.
 |   |-- architect.md                     System design. Diagrams (mermaid/drawio). 3 design tiers.
-|   |-- project-manager.md              Sprint delivery. 3-tier plans. QA-dev sync. Risk management.
+|   |-- project_manager.md              Sprint delivery. 3-tier plans. QA-dev sync. Risk management.
 |   |-- reviewer.md                     Persistent critic. Challenges all agents at every phase.
 |   |-- researcher.md                   On-demand tech research and evaluation.
 |   |-- developer.md                    Base developer role (extended by specialists).
 |
 |-- specialists/                     <-- L2 Technology Specializations (extend developer.md)
-|   |-- backend-developer.md             Python (venv), Java, Rust, C, C++, SQL, databases, APIs.
-|   |-- frontend-developer.md            TypeScript, React, Next.js, accessibility.
-|   |-- mobile-app-developer.md          Swift, Kotlin, React Native, Flutter.
-|   |-- devops-engineer.md               Docker, K8s, Helm, GitHub Actions, git flow, Makefile.
-|   |-- qa-automation-engineer.md        Test framework design. Feeds devs with test patterns.
-|   |-- security-developer.md            Auth, encryption, STRIDE threat modeling.
+|   |-- backend_developer.md             Python (venv), Java, Rust, C, C++, SQL, databases, APIs.
+|   |-- frontend_developer.md            TypeScript, React, Next.js, accessibility.
+|   |-- mobile_app_developer.md          Swift, Kotlin, React Native, Flutter.
+|   |-- devops_engineer.md               Docker, K8s, Helm, GitHub Actions, git flow, Makefile.
+|   |-- qa_automation_engineer.md        Test framework design. Feeds devs with test patterns.
+|   |-- security_developer.md            Auth, encryption, STRIDE threat modeling.
 |
 |-- INTEGRATION-CLAUDE-CODE.md       <-- Setup guide: how to add zbik-agents to Claude Code
 |-- INTEGRATION-GASTOWN.md           <-- Setup guide: how to add zbik-agents to Gastown
@@ -62,7 +62,7 @@ zbik-agents/
 **If you want to understand how the agents work:**
 1. Read `_base.md` -- the constitutional layer all agents inherit
 2. Read `roles/developer.md` -- the base developer pattern
-3. Read any specialist (e.g., `specialists/backend-developer.md`) to see how L2 extends L1
+3. Read any specialist (e.g., `specialists/backend_developer.md`) to see how L2 extends L1
 4. Read `CLAUDE.md` -- the orchestration flow and coding standards
 
 **If you want to decide between Claude Code and Gastown:**
@@ -82,21 +82,21 @@ L0  _base.md (Constitutional)
     |
 L1  roles/ (Archetypes)
     |
-    |-- business-analyst     Coordination, not code
+    |-- business_analyst     Coordination, not code
     |-- architect             Coordination, not code
-    |-- project-manager       Coordination, not code
+    |-- project_manager       Coordination, not code
     |-- reviewer              Coordination, not code
     |-- researcher            Coordination, not code
     |-- developer             Base for all specialists
     |
 L2  specialists/ (extend developer.md)
     |
-    |-- backend-developer     Python, Java, Rust, C, C++, SQL
-    |-- frontend-developer    TypeScript, React, Next.js
-    |-- mobile-app-developer  Swift, Kotlin, Flutter
-    |-- devops-engineer       Docker, K8s, Helm, GitHub Actions
-    |-- qa-automation-engineer Test frameworks, CI integration
-    |-- security-developer    Auth, encryption, threat modeling
+    |-- backend_developer     Python, Java, Rust, C, C++, SQL
+    |-- frontend_developer    TypeScript, React, Next.js
+    |-- mobile_app_developer  Swift, Kotlin, Flutter
+    |-- devops_engineer       Docker, K8s, Helm, GitHub Actions
+    |-- qa_automation_engineer Test frameworks, CI integration
+    |-- security_developer    Auth, encryption, threat modeling
 ```
 
 L1 roles coordinate, design, and govern. L2 specialists write code and extend

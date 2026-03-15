@@ -80,7 +80,7 @@ One copy of agent definitions shared by all projects (rigs):
 └── project-gamma/                 <-- rig 3 (uses shared zbik-agents/)
 ```
 
-- `agents.json` defines presets once (`zbk-backend`, `zbk-reviewer`, etc.)
+- `agents.json` defines presets once (`backend`, `reviewer`, etc.)
 - Every rig uses them automatically
 - Each rig can override which preset goes to which role via `rig-settings.json`
 - Agent definitions themselves are shared -- update once, all rigs get the change
@@ -159,7 +159,7 @@ Only the orchestration layer changes.
 3. Copy zbik-agents to town: `cp -r zbik-agents ~/gt/zbik-agents`
 4. Register agents: paste `agents.json` from `INTEGRATION-GASTOWN.md`
 5. Map roles: paste `town-settings.json` from `INTEGRATION-GASTOWN.md`
-6. Add existing project as rig: `gt rig add myproject <repo-url>`
+6. Add existing project as rig: `gt rig add my-project <repo-url>`
 7. Done -- your agent definitions are unchanged, only the runner is different
 
 ### Gastown --> Claude Code

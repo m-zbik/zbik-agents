@@ -11,6 +11,8 @@ How to use `zbik-agents` with Claude Code (CLI, subagents, Agent SDK, and hooks)
   - [Method B: Git Submodule (recommended for teams)](#method-b-git-submodule-recommended-for-teams)
   - [Method C: Symlink or Absolute Path (personal use)](#method-c-symlink-or-absolute-path-personal-use)
 - [How to Create a New Project (Step-by-Step)](#how-to-create-a-new-project-step-by-step)
+  - [Version A: Local Only (no remote)](#version-a-local-only-no-remote-no-push)
+  - [Version B: With GitHub Remote](#version-b-with-github-remote)
 - [Using Agents in Claude Code](#using-agents-in-claude-code)
   - [1. Subagents (recommended)](#1-subagents-recommended)
   - [2. CLAUDE.md (project-wide rules)](#2-claudemd-project-wide-rules)
@@ -199,29 +201,103 @@ Rules:
 
 ## How to Create a New Project (Step-by-Step)
 
-Complete walkthrough from empty directory to running team.
+Two versions: local-only (no GitHub needed) and with GitHub remote.
 
-### Step 1: Create your project directory
+### Version A: Local Only (no remote, no push)
+
+Everything stays on your machine. No GitHub account needed.
+
+```bash
+# 1. Create project
+mkdir my-new-project && cd my-new-project
+git init
+
+# 2. Copy zbik-agents into project
+cp -r /Users/<your-user>/projects/<your-project>/zbik-agents .
+
+# 3. Create CLAUDE.md
+cat > CLAUDE.md << 'EOF'
+# My Project
+
+## Team
+@zbik-agents/CLAUDE.md
+
+## Project-Specific
+- Describe your project tech stack here
+EOF
+
+# 4. Create .claude/agents/ subagent files (see Step 4 in Version B below)
+mkdir -p .claude/agents
+for agent in business_analyst architect project_manager reviewer researcher developer; do
+  cat > .claude/agents/${agent}.md << EOF
+---
+name: ${agent}
+description: See zbik-agents/roles/${agent}.md
+tools: Read, Grep, Glob, WebSearch, WebFetch, Bash
+model: opus
+---
+
+@../../zbik-agents/_base.md
+@../../zbik-agents/roles/${agent}.md
+EOF
+done
+
+for agent in backend_developer frontend_developer mobile_app_developer devops_engineer qa_automation_engineer security_developer; do
+  cat > .claude/agents/${agent}.md << EOF
+---
+name: ${agent}
+description: See zbik-agents/specialists/${agent}.md
+tools: Read, Edit, Write, Bash, Grep, Glob
+model: opus
+---
+
+@../../zbik-agents/_base.md
+@../../zbik-agents/specialists/${agent}.md
+EOF
+done
+
+# 5. Commit
+git add . && git commit -m "Add zbik-agents team setup"
+
+# 6. Start Claude Code
+claude
+```
+
+Everything is local. No remote, no push. You can add a remote later if you decide
+to back things up:
+
+```bash
+git remote add origin git@github.com:<your-org>/my-project.git
+git push -u origin main
+```
+
+---
+
+### Version B: With GitHub Remote
+
+Complete walkthrough from empty directory to running team with GitHub backup.
+
+#### Step 1: Create your project directory
 
 ```bash
 mkdir my-new-project && cd my-new-project
 git init
 ```
 
-### Step 2: Add zbik-agents (pick one)
+#### Step 2: Add zbik-agents (pick one)
 
 ```bash
-# Option A: Copy
+# Option A: Copy (simplest, self-contained)
 cp -r /Users/<your-user>/projects/<your-project>/zbik-agents .
 
-# Option B: Git submodule
+# Option B: Git submodule (versioned, shared with team)
 git submodule add https://github.com/<your-org>/zbik-agents.git zbik-agents
 
-# Option C: Symlink
+# Option C: Symlink (always up-to-date, not portable)
 ln -s /Users/<your-user>/projects/<your-project>/zbik-agents zbik-agents
 ```
 
-### Step 3: Create CLAUDE.md at project root
+#### Step 3: Create CLAUDE.md at project root
 
 ```bash
 cat > CLAUDE.md << 'EOF'
@@ -236,13 +312,13 @@ cat > CLAUDE.md << 'EOF'
 EOF
 ```
 
-### Step 4: Create .claude/agents/ subagent files
+#### Step 4: Create .claude/agents/ subagent files
 
 ```bash
 mkdir -p .claude/agents
 
 # Create all 12 subagent files in one go
-for agent in business-analyst architect project-manager reviewer researcher developer; do
+for agent in business_analyst architect project_manager reviewer researcher developer; do
   cat > .claude/agents/${agent}.md << EOF
 ---
 name: ${agent}
@@ -256,7 +332,7 @@ model: opus
 EOF
 done
 
-for agent in backend-developer frontend-developer mobile-app-developer devops-engineer qa-automation-engineer security-developer; do
+for agent in backend_developer frontend_developer mobile_app_developer devops_engineer qa_automation_engineer security_developer; do
   cat > .claude/agents/${agent}.md << EOF
 ---
 name: ${agent}
@@ -271,7 +347,7 @@ EOF
 done
 ```
 
-### Step 5: (Optional) Add hooks for auto-injection
+#### Step 5: (Optional) Add hooks for auto-injection
 
 ```bash
 mkdir -p .claude
@@ -294,14 +370,14 @@ cat > .claude/settings.json << 'EOF'
 EOF
 ```
 
-### Step 6: Commit the setup
+#### Step 6: Commit the setup
 
 ```bash
 git add CLAUDE.md .claude/ zbik-agents/
 git commit -m "Add zbik-agents team setup"
 ```
 
-### Step 7: Start Claude Code and begin
+#### Step 7: Start Claude Code and begin
 
 ```bash
 claude
@@ -334,17 +410,17 @@ Place agent definitions in `.claude/agents/` (project-level, shared via git) or 
 
 Each file uses YAML frontmatter + markdown body. The body is the system prompt; the frontmatter controls config.
 
-**`.claude/agents/business-analyst.md`**
+**`.claude/agents/business_analyst.md`**
 ```markdown
 ---
-name: business-analyst
+name: business_analyst
 description: Initiates all projects. Deep research from scientific papers, official docs, GitHub repos, verified blogs. Produces functional specs with three solution tiers and cost analysis.
 tools: Read, Grep, Glob, WebSearch, WebFetch, Bash
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/roles/business-analyst.md
+@../../zbik-agents/roles/business_analyst.md
 ```
 
 **`.claude/agents/architect.md`**
@@ -360,17 +436,17 @@ model: opus
 @../../zbik-agents/roles/architect.md
 ```
 
-**`.claude/agents/project-manager.md`**
+**`.claude/agents/project_manager.md`**
 ```markdown
 ---
-name: project-manager
+name: project_manager
 description: Project coordination, sprint delivery planning, and progress tracking. Prepares three-tier delivery plans. Keeps QA synchronized with developers.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/roles/project-manager.md
+@../../zbik-agents/roles/project_manager.md
 ```
 
 **`.claude/agents/reviewer.md`**
@@ -412,82 +488,82 @@ model: opus
 @../../zbik-agents/roles/developer.md
 ```
 
-**`.claude/agents/backend-developer.md`**
+**`.claude/agents/backend_developer.md`**
 ```markdown
 ---
-name: backend-developer
+name: backend_developer
 description: Backend development in Python (venv), Java, Rust, C, C++, SQL, and databases. Use for server-side code, APIs, database schemas, and data processing.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/backend-developer.md
+@../../zbik-agents/specialists/backend_developer.md
 ```
 
-**`.claude/agents/frontend-developer.md`**
+**`.claude/agents/frontend_developer.md`**
 ```markdown
 ---
-name: frontend-developer
+name: frontend_developer
 description: Frontend development with TypeScript, React, and Next.js. Use for UI components, web apps, and accessibility work.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/frontend-developer.md
+@../../zbik-agents/specialists/frontend_developer.md
 ```
 
-**`.claude/agents/mobile-app-developer.md`**
+**`.claude/agents/mobile_app_developer.md`**
 ```markdown
 ---
-name: mobile-app-developer
+name: mobile_app_developer
 description: Mobile development for iOS (Swift), Android (Kotlin), React Native, and Flutter. Use for native and cross-platform mobile apps.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/mobile-app-developer.md
+@../../zbik-agents/specialists/mobile_app_developer.md
 ```
 
-**`.claude/agents/devops-engineer.md`**
+**`.claude/agents/devops_engineer.md`**
 ```markdown
 ---
-name: devops-engineer
+name: devops_engineer
 description: CI/CD pipelines, Docker, Kubernetes, Helm, GitHub Actions, git flow, and local dev environment setup. Use for deployment, infrastructure, and pipeline work.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/devops-engineer.md
+@../../zbik-agents/specialists/devops_engineer.md
 ```
 
-**`.claude/agents/qa-automation-engineer.md`**
+**`.claude/agents/qa_automation_engineer.md`**
 ```markdown
 ---
-name: qa-automation-engineer
+name: qa_automation_engineer
 description: QA test framework design and automation. Provides test briefs, patterns, and templates to developers. Every feature must have automated tests.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/qa-automation-engineer.md
+@../../zbik-agents/specialists/qa_automation_engineer.md
 ```
 
-**`.claude/agents/security-developer.md`**
+**`.claude/agents/security_developer.md`**
 ```markdown
 ---
-name: security-developer
+name: security_developer
 description: Security design and implementation. Reviews architecture for vulnerabilities, creates threat models (STRIDE), implements auth and encryption. Iterates with architect until design is secure.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 @../../zbik-agents/_base.md
-@../../zbik-agents/specialists/security-developer.md
+@../../zbik-agents/specialists/security_developer.md
 ```
 
 #### Using Subagents in Conversation
@@ -496,16 +572,16 @@ Claude Code automatically delegates to subagents based on the task, or you can i
 
 ```
 > Start a new project to build a payment processing system
-  -> business-analyst initiates: researches, produces functional spec with 3 tiers
+  -> business_analyst initiates: researches, produces functional spec with 3 tiers
 
 > Have the architect design the system based on the BA's spec
   -> architect creates 3 design tiers with diagrams
 
-> Ask the security-developer to review and harden the architecture
-  -> security-developer + architect iterate until secure
+> Ask the security_developer to review and harden the architecture
+  -> security_developer + architect iterate until secure
 
-> Have the project-manager plan the delivery
-  -> project-manager produces 3-tier delivery plan, selects specialists
+> Have the project_manager plan the delivery
+  -> project_manager produces 3-tier delivery plan, selects specialists
 
 > Use the reviewer to challenge the BA's findings
   -> reviewer challenges with "why?", "how much?", "what if it fails?"
@@ -542,15 +618,15 @@ The `@zbik-agents/_base.md` import pulls in the constitutional guardrails (typin
 #### Append Agent Context to Default Prompt
 
 ```bash
-# Start a session with backend-developer context appended
-claude --append-system-prompt-file zbik-agents/specialists/backend-developer.md
+# Start a session with backend_developer context appended
+claude --append-system-prompt-file zbik-agents/specialists/backend_developer.md
 
 # Start a reviewer session
 claude --append-system-prompt-file zbik-agents/roles/reviewer.md
 
 # Combine base + specialist
 claude --append-system-prompt-file zbik-agents/_base.md \
-       --append-system-prompt-file zbik-agents/specialists/backend-developer.md
+       --append-system-prompt-file zbik-agents/specialists/backend_developer.md
 ```
 
 #### Non-Interactive (Scripting/CI)
@@ -562,7 +638,7 @@ claude -p "Review the code in src/" \
 
 # Run backend implementation
 claude -p "Implement the user service in Python" \
-  --append-system-prompt-file zbik-agents/specialists/backend-developer.md
+  --append-system-prompt-file zbik-agents/specialists/backend_developer.md
 ```
 
 ---
@@ -609,7 +685,7 @@ Use hooks to automatically inject agent context at specific lifecycle points.
   "hooks": {
     "SubagentStart": [
       {
-        "matcher": "backend-developer",
+        "matcher": "backend_developer",
         "hooks": [
           {
             "type": "command",
@@ -650,15 +726,15 @@ async def main() -> None:
         options=ClaudeAgentOptions(
             allowed_tools=["Read", "Edit", "Write", "Bash", "Grep", "Glob", "Agent"],
             agents={
-                "project-manager": AgentDefinition(
+                "project_manager": AgentDefinition(
                     description="Coordinates work, decomposes tasks, tracks progress.",
-                    prompt=load_agent(AGENTS_DIR, "_base.md", "roles/project-manager.md"),
+                    prompt=load_agent(AGENTS_DIR, "_base.md", "roles/project_manager.md"),
                     tools=["Read", "Grep", "Glob", "Bash"],
                     model="opus",
                 ),
-                "backend-developer": AgentDefinition(
+                "backend_developer": AgentDefinition(
                     description="Backend development in Python, Java, Rust, C, C++, SQL.",
-                    prompt=load_agent(AGENTS_DIR, "_base.md", "specialists/backend-developer.md"),
+                    prompt=load_agent(AGENTS_DIR, "_base.md", "specialists/backend_developer.md"),
                     tools=["Read", "Edit", "Write", "Bash", "Grep", "Glob"],
                     model="opus",
                 ),
@@ -690,9 +766,9 @@ function loadAgent(...files: string[]): string {
 }
 
 const agents: Record<string, AgentDefinition> = {
-  "backend-developer": {
+  "backend_developer": {
     description: "Backend development in Python, Java, Rust, C, C++, SQL.",
-    prompt: loadAgent("_base.md", "specialists/backend-developer.md"),
+    prompt: loadAgent("_base.md", "specialists/backend_developer.md"),
     tools: ["Read", "Edit", "Write", "Bash", "Grep", "Glob"],
     model: "opus",
   },
@@ -722,7 +798,7 @@ The model is set in each `.claude/agents/*.md` subagent file via YAML frontmatte
 
 ```yaml
 ---
-name: backend-developer
+name: backend_developer
 model: opus          # <-- change model here
 ---
 ```
@@ -774,9 +850,9 @@ When using the full squad, this is the conversation flow with human review gates
 
 | Phase | Agent | Input | Output |
 |---|---|---|---|
-| 1. Initiate | business-analyst | Problem statement | Functional spec + 3 solution tiers + cost |
-| 2. Design | architect + security-developer + devops-engineer | Approved spec | Architecture + security + rollout plan |
-| 3. Plan | project-manager | Approved design | 3-tier delivery plan + sprint breakdown |
+| 1. Initiate | business_analyst | Problem statement | Functional spec + 3 solution tiers + cost |
+| 2. Design | architect + security_developer + devops_engineer | Approved spec | Architecture + security + rollout plan |
+| 3. Plan | project_manager | Approved design | 3-tier delivery plan + sprint breakdown |
 | 4. Implement | specialists + qa | Sprint tasks | Code + tests + CI/CD |
 | All phases | reviewer | Each phase output | Challenges, approvals, blocking findings |
 
@@ -805,33 +881,33 @@ your-project/
 ├── .claude/
 │   ├── settings.json                      # Hooks, permissions, tool config
 │   └── agents/                            # Subagent definitions (shared via git)
-│       ├── business-analyst.md            # Initiates all projects (L1)
+│       ├── business_analyst.md            # Initiates all projects (L1)
 │       ├── architect.md                   # System design + diagrams (L1)
-│       ├── project-manager.md             # Sprint delivery planning (L1)
+│       ├── project_manager.md             # Sprint delivery planning (L1)
 │       ├── reviewer.md                    # Persistent critic at every phase (L1)
 │       ├── researcher.md                  # On-demand tech research (L1)
 │       ├── developer.md                   # Base developer (L1)
-│       ├── backend-developer.md           # Python/Java/Rust/C/C++/SQL (L2)
-│       ├── frontend-developer.md          # TypeScript/React/Next.js (L2)
-│       ├── mobile-app-developer.md        # Swift/Kotlin/Flutter (L2)
-│       ├── devops-engineer.md             # CI/CD/Docker/K8s/Helm/git flow (L2)
-│       ├── qa-automation-engineer.md      # Test frameworks + automation (L2)
-│       └── security-developer.md          # Auth/encryption/threat modeling (L2)
+│       ├── backend_developer.md           # Python/Java/Rust/C/C++/SQL (L2)
+│       ├── frontend_developer.md          # TypeScript/React/Next.js (L2)
+│       ├── mobile_app_developer.md        # Swift/Kotlin/Flutter (L2)
+│       ├── devops_engineer.md             # CI/CD/Docker/K8s/Helm/git flow (L2)
+│       ├── qa_automation_engineer.md      # Test frameworks + automation (L2)
+│       └── security_developer.md          # Auth/encryption/threat modeling (L2)
 └── zbik-agents/                        # Git submodule, copy, or symlink
     ├── CLAUDE.md                          # Runtime: workflow + standards (AI reads this)
     ├── _base.md                           # L0 Constitutional guardrails
     ├── roles/                             # L1 Role Archetypes
-    │   ├── business-analyst.md
+    │   ├── business_analyst.md
     │   ├── architect.md
-    │   ├── project-manager.md
+    │   ├── project_manager.md
     │   ├── reviewer.md
     │   ├── researcher.md
     │   └── developer.md
     └── specialists/                       # L2 Technology Specializations
-        ├── backend-developer.md
-        ├── frontend-developer.md
-        ├── mobile-app-developer.md
-        ├── devops-engineer.md
-        ├── qa-automation-engineer.md
-        └── security-developer.md
+        ├── backend_developer.md
+        ├── frontend_developer.md
+        ├── mobile_app_developer.md
+        ├── devops_engineer.md
+        ├── qa_automation_engineer.md
+        └── security_developer.md
 ```
