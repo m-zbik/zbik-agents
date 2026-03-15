@@ -7,9 +7,7 @@ How to use `zbik-agents` with [Gastown](https://github.com/steveyegge/gastown).
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Create a New Project](#create-a-new-project)
-  - [Version A: Local Only (no remote)](#version-a-local-only-no-remote-no-push)
-  - [Version B: With GitHub Remote](#version-b-with-github-remote)
+- [Create a New Project (Step-by-Step)](#create-a-new-project-step-by-step)
 - [Reference](#reference)
   - [agents.json (agent presets)](#agentsjson-agent-presets)
   - [town-settings.json (role mapping)](#town-settingsjson-role-mapping)
@@ -43,95 +41,30 @@ Also required: Git 2.25+, Dolt 1.82.4+, beads (`bd`) 0.55.4+, tmux 3.0+, sqlite3
 
 ## Create a New Project
 
-Two versions: local-only (everything on your machine) and with GitHub remote.
+Gastown requires a GitHub (or other remote) URL for every rig. Local-only repos
+without a remote are not supported -- `gt crew add` and `gt sling` need a URL to
+clone from. If you want local-only development without GitHub, use Claude Code
+instead (see `INTEGRATION-CLAUDE-CODE.md`).
 
-### Version A: Local Only (no remote, no push)
+### Step 1: Create your town
 
-No GitHub account needed. Everything stays on your machine.
-
-The town path is configurable -- `~/gt/` is the default but you can use any location.
-The `--git` flag runs `gt git-init` automatically. If you used `--shell` instead,
-run `gt git-init` separately after install.
-
-```bash
-# 1. Create your town
-gt install ~/projects/gt --git             # or: gt install ~/gt --git
-cd ~/projects/gt
-
-# 2. Add zbik-agents to the town (shared by all rigs) -- pick one:
-
-# 2A. Copy from local
-cp -r /Users/<your-user>/projects/<your-project>/zbik-agents .
-git add zbik-agents/ && git commit -m "Add zbik-agents"
-
-# 2B. Or git submodule (even without pushing the town itself)
-git submodule add git@github.com:m-zbik/zbik-agents.git zbik-agents
-git commit -m "Add zbik-agents submodule"
-
-# 3. Register agents and map roles
-#    Paste agents.json content from the Reference section below:
-vi settings/agents.json
-#    Paste town-settings.json content from the Reference section below:
-vi settings/town-settings.json
-git add settings/ && git commit -m "Configure agent presets and role mappings"
-
-# Verify agents are registered
-gt config agent list
-
-# 4. Create your project inside the town and register as a rig
-mkdir -p ~/projects/gt/my-project && cd ~/projects/gt/my-project
-git init && git commit --allow-empty -m "Initial commit"
-gt rig add my-project --adopt --force
-gt rig list   # verify
-
-# 6. Start working
-gt crew add business_analyst --rig my-project
-gt start crew business_analyst --agent business_analyst
-
-# Or start the Mayor to coordinate everything
-gt mayor attach
-```
-
-Everything is local. No remote, no push. You can add a remote later:
-
-```bash
-# Back up your town
-gh repo create <your-org>/gt-town --private --clone=false
-cd ~/projects/gt
-git remote add origin git@github.com:<your-org>/gt-town.git
-git push -u origin main
-
-# Back up your project
-gh repo create <your-org>/my-project --private --clone=false
-cd ~/projects/my-project
-git remote add origin git@github.com:<your-org>/my-project.git
-git push -u origin main
-```
-
----
-
-### Version B: With GitHub Remote
-
-Full setup with git submodules, GitHub backup, and team sharing.
-
-#### Step 1: Create your town
-
-The path is configurable -- `~/gt/` is the default but you can use any location:
+The path is configurable -- `~/gt/` is the default but you can use any location.
+The `--git` flag runs `gt git-init` automatically:
 
 ```bash
 gt install ~/projects/gt --git
 cd ~/projects/gt
 ```
 
-The `--git` flag runs `gt git-init` automatically. If you used `--shell` instead:
+If you used `--shell` instead, run `gt git-init` separately:
 
 ```bash
 gt install ~/projects/gt --shell
 cd ~/projects/gt
-gt git-init                                # initialize git tracking separately
+gt git-init
 ```
 
-#### Step 2: Add zbik-agents as a git submodule to the town
+### Step 2: Add zbik-agents to the town
 
 ```bash
 cd ~/projects/gt
@@ -148,7 +81,7 @@ cp -r /Users/<your-user>/projects/<your-project>/zbik-agents .
 git add zbik-agents/ && git commit -m "Add zbik-agents"
 ```
 
-#### Step 3: Register agents and map roles
+### Step 3: Register agents and map roles
 
 Paste the JSON from the [Reference](#reference) section below:
 
@@ -164,7 +97,7 @@ Verify:
 gt config agent list
 ```
 
-#### Step 4: (Optional) Back up your town to GitHub
+### Step 4: (Optional) Back up your town to GitHub
 
 ```bash
 cd ~/projects/gt
@@ -179,7 +112,7 @@ On another machine:
 git clone --recurse-submodules git@github.com:<your-org>/gt-town.git ~/projects/gt
 ```
 
-#### Step 5: Create your project repo on GitHub
+### Step 5: Create your project repo on GitHub
 
 ```bash
 # For a brand new project
@@ -188,7 +121,7 @@ gh repo create <your-org>/my-project --private --clone=false
 
 Skip this if you already have a repo on GitHub.
 
-#### Step 6: Add the project as a rig
+### Step 6: Add the project as a rig
 
 ```bash
 cd ~/projects/gt
@@ -196,7 +129,7 @@ gt rig add my-project git@github.com:<your-org>/my-project.git
 gt rig list   # verify
 ```
 
-#### Step 7: (Optional) Set rig-level overrides
+### Step 7: (Optional) Set rig-level overrides
 
 ```bash
 cat > ~/projects/gt/my-project/settings/rig-settings.json << 'EOF'
@@ -210,7 +143,7 @@ cat > ~/projects/gt/my-project/settings/rig-settings.json << 'EOF'
 EOF
 ```
 
-#### Step 8: Start the team
+### Step 8: Start the team
 
 ```bash
 # Start with Business Analyst (BA initiates all projects)
@@ -247,7 +180,7 @@ gt sling <bead-id> my-project --agent frontend
 -> You review at milestones only
 ```
 
-#### Step 9: Verify health
+### Step 9: Verify health
 
 ```bash
 gt doctor

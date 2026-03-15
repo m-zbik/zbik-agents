@@ -134,6 +134,7 @@ BA --> [you review] --> Architect --> [you review] --> PM --> [you review] --> S
 - You don't need agents running overnight or across sessions
 - Only phase 4 (sprint execution) would benefit from parallelism
 - You want minimal infrastructure
+- You want to work fully local without a GitHub remote
 
 ### Move to Gastown when:
 
@@ -143,6 +144,7 @@ BA --> [you review] --> Architect --> [you review] --> PM --> [you review] --> S
 - You run multiple projects (rigs) concurrently and want centralized agent management
 - You need audit trails and git-backed work tracking (beads)
 - Multiple humans are managing different parts of the same project
+- You have GitHub repos for all projects (Gastown requires a remote URL per rig)
 
 ---
 
