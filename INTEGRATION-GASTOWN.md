@@ -224,8 +224,16 @@ There are two ways to kick off a project — **direct agent sessions** or **orch
 
 ```bash
 gt crew add business_analyst --rig my-project
-gt start crew business_analyst --agent business_analyst
+gt start crew business_analyst --rig my-project --agent business_analyst
 ```
+
+The crew worker runs in the background. To interact with it, attach to its tmux session:
+
+```bash
+gt crew at business_analyst --rig my-project
+```
+
+This opens the Claude session where you type your requests. Use `Ctrl+B D` to detach from tmux and leave the session running in the background.
 
 Starts a **single, persistent agent session**. You interact with that one agent directly and manually hand off between agents as each phase completes (e.g., when BA finishes the spec, you start the Architect yourself). Best for focused, phase-by-phase work with full control over the workflow.
 
@@ -254,7 +262,7 @@ You: I want to build [describe your project]
 -> You review spec -> "approved"
 
 # Start Architect
-gt start crew architect --agent architect
+gt start crew architect --rig my-project --agent architect
 
 -> Architect designs + Security Dev + DevOps plan rollout
 -> You review -> "approved"
@@ -428,6 +436,17 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
       "resume_style": "flag",
       "prompt_mode": "arg",
       "ready_delay_ms": 3000
+    },
+    "product_owner": {
+      "name": "product_owner",
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/product_owner.md"],
+      "process_names": ["claude", "node"],
+      "session_id_env": "CLAUDE_SESSION_ID",
+      "resume_flag": "--resume",
+      "resume_style": "flag",
+      "prompt_mode": "arg",
+      "ready_delay_ms": 3000
     }
   }
 }
@@ -445,13 +464,13 @@ Paste into `~/projects/gt/settings/town-settings.json`:
   "version": 1,
   "default_agent": "developer",
   "role_agents": {
-    "mayor":    "project_manager",
+    "mayor":    "product_owner",
     "deacon":   "project_manager",
-    "witness":  "reviewer",
+    "witness":  "qa",
     "refinery": "reviewer",
     "polecat":  "developer",
-    "crew":     "developer",
-    "boot":     "reviewer",
+    "crew":     "business_analyst",
+    "boot":     "security",
     "dog":      "devops"
   }
 }
@@ -593,16 +612,16 @@ gt deacon health-state           # Overall health
 
 ### Role-to-agent mapping
 
-| Gastown Role | Purpose | zbik-agents Agent | Why |
-|---|---|---|---|
-| mayor | Global coordinator | project_manager | PM decomposes tasks, tracks progress |
-| deacon | Background supervisor | project_manager | PM monitors health, escalates |
-| witness | Per-rig lifecycle manager | reviewer | Reviewer verifies quality before merge |
-| refinery | Merge queue processor | reviewer | Reviewer enforces quality gates |
-| polecat | Transient workers | backend/frontend/mobile/devops/qa/security | Specialists execute tasks |
-| crew | Persistent workers | business_analyst, architect, researcher | Long-running sessions |
-| boot | Ephemeral health triage | reviewer | Quick diagnostic assessment |
-| dog | Infrastructure helpers | devops | CI/CD and infrastructure tasks |
+| Gastown Role | Purpose | Default Agent | Available via `--agent` | Why |
+|---|---|---|---|---|
+| mayor | Global coordinator | product_owner | project_manager | PO drives product vision, prioritizes backlog |
+| deacon | Background supervisor | project_manager | — | PM monitors health, coordinates, escalates |
+| witness | Per-rig lifecycle manager | qa | reviewer | QA validates quality gates before merge |
+| refinery | Merge queue processor | reviewer | qa | Reviewer enforces code review standards |
+| polecat | Transient workers | developer | backend, frontend, mobile, devops, qa, security | Specialists execute tasks (override per rig) |
+| crew | Persistent workers | business_analyst | architect, researcher, developer | Long-running sessions for research & analysis |
+| boot | Ephemeral health triage | security | reviewer | Security-first diagnostic assessment |
+| dog | Infrastructure helpers | devops | — | CI/CD and infrastructure tasks |
 
 ### Assigning work
 
@@ -613,5 +632,5 @@ gt sling <bead-id> my-project --agent frontend
 
 # Crew (persistent workers)
 gt crew add backend_dev --rig my-project
-gt start crew backend_dev --agent backend
+gt start crew backend_dev --rig my-project --agent backend
 ```

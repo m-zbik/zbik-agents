@@ -41,6 +41,7 @@ review gate -- nothing proceeds without explicit human approval at each gate.
 
 | Agent | Role |
 |---|---|
+| Product Owner | Product vision, backlog prioritization, stakeholder alignment |
 | Business Analyst | Initiates projects, research, functional specs |
 | Architect | System design, diagrams, tech justification |
 | Project Manager | Delivery planning, sprints, team coordination |
