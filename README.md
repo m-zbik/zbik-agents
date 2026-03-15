@@ -124,6 +124,24 @@ the developer role with technology-specific guardrails.
 | 3 | Delivery plan, milestones, repos, data sources | Which tier to build |
 | 4 | Milestone deliverables + demo | Not individual PRs |
 
+## Updating zbik-agents in Your Project
+
+If you added `zbik-agents` as a git submodule to another project, update it after
+pushing changes here:
+
+```bash
+cd your-project
+git submodule update --remote zbik-agents
+git add zbik-agents
+git commit -m "Update zbik-agents to latest"
+```
+
+If teammates need the update too, they run after pulling:
+
+```bash
+git submodule update --init --recursive
+```
+
 ## Key Design Decisions
 
 - **Same agent files work with both Claude Code and Gastown** -- only the orchestration layer changes

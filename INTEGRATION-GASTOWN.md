@@ -81,7 +81,59 @@ cp -r /Users/<your-user>/projects/<your-project>/zbik-agents .
 git add zbik-agents/ && git commit -m "Add zbik-agents"
 ```
 
-### Step 3: Register agents and map roles
+### Step 3: Install the agent wrapper
+
+The Claude CLI has `--append-system-prompt` (inline text) but not
+`--append-system-prompt-file` (read from file). The `bin/claude-agent` wrapper
+translates `--append-system-prompt-file <path>` into
+`--append-system-prompt "$(cat <path>)"` so agents.json can reference role files
+by path.
+
+```bash
+mkdir -p bin
+cat > bin/claude-agent << 'WRAPPER'
+#!/bin/bash
+# Wrapper: translates --append-system-prompt-file <path> into
+# --append-system-prompt "$(cat <path>)" so Gastown agents.json works
+# with the real Claude CLI (which only has --append-system-prompt).
+
+# Resolve file paths relative to GT_ROOT if set
+resolve_path() {
+  local p="$1"
+  if [[ "$p" != /* && -n "$GT_ROOT" && ! -f "$p" && -f "$GT_ROOT/$p" ]]; then
+    echo "$GT_ROOT/$p"
+  else
+    echo "$p"
+  fi
+}
+
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --append-system-prompt-file)
+      shift
+      local_path="$(resolve_path "$1")"
+      if [[ -f "$local_path" ]]; then
+        args+=(--append-system-prompt "$(cat "$local_path")")
+      else
+        echo "claude-agent: file not found: $1 (resolved: $local_path)" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      args+=("$1")
+      ;;
+  esac
+  shift
+done
+
+exec claude "${args[@]}"
+WRAPPER
+chmod +x bin/claude-agent
+git add bin/ && git commit -m "Add claude-agent wrapper for system prompt files"
+```
+
+### Step 4: Register agents and map roles
 
 Paste the JSON from the [Reference](#reference) section below:
 
@@ -97,7 +149,28 @@ Verify:
 gt config agent list
 ```
 
-### Step 4: (Optional) Back up your town to GitHub
+### Updating zbik-agents
+
+After changes are pushed to the `zbik-agents` repo, update the submodule in your town:
+
+```bash
+cd ~/projects/gt
+git submodule update --remote zbik-agents
+git add zbik-agents
+git commit -m "Update zbik-agents to latest"
+git push   # if backed up to GitHub
+```
+
+When teammates pull the town and need the updated submodule:
+
+```bash
+git pull
+git submodule update --init --recursive
+```
+
+---
+
+### Step 5: (Optional) Back up your town to GitHub
 
 ```bash
 cd ~/projects/gt
@@ -112,7 +185,7 @@ On another machine:
 git clone --recurse-submodules git@github.com:<your-org>/gt-town.git ~/projects/gt
 ```
 
-### Step 5: Create your project repo on GitHub
+### Step 6: Create your project repo on GitHub
 
 ```bash
 # For a brand new project
@@ -121,7 +194,7 @@ gh repo create <your-org>/my-project --private --clone=false
 
 Skip this if you already have a repo on GitHub.
 
-### Step 6: Add the project as a rig
+### Step 7: Add the project as a rig
 
 ```bash
 cd ~/projects/gt
@@ -129,7 +202,7 @@ gt rig add my-project git@github.com:<your-org>/my-project.git
 gt rig list   # verify
 ```
 
-### Step 7: (Optional) Set rig-level overrides
+### Step 8: (Optional) Set rig-level overrides
 
 ```bash
 cat > ~/projects/gt/my-project/settings/rig-settings.json << 'EOF'
@@ -143,16 +216,33 @@ cat > ~/projects/gt/my-project/settings/rig-settings.json << 'EOF'
 EOF
 ```
 
-### Step 8: Start the team
+### Step 9: Start the team
+
+There are two ways to kick off a project — **direct agent sessions** or **orchestrated coordination**:
+
+#### Option A: Direct Agent Session (`gt crew`)
 
 ```bash
-# Start with Business Analyst (BA initiates all projects)
 gt crew add business_analyst --rig my-project
 gt start crew business_analyst --agent business_analyst
+```
 
-# Or start the Mayor to coordinate everything
+Starts a **single, persistent agent session**. You interact with that one agent directly and manually hand off between agents as each phase completes (e.g., when BA finishes the spec, you start the Architect yourself). Best for focused, phase-by-phase work with full control over the workflow.
+
+#### Option B: Orchestrated Coordination (`gt mayor`)
+
+```bash
 gt mayor attach
 ```
+
+Starts the **Project Manager (Mayor)** who acts as the global coordinator. The Mayor decomposes tasks, delegates to the right agents automatically, manages the full workflow (BA → Architect → Security → PM planning → Specialists), tracks progress across milestones, and enforces the 4 human review gates. Best for end-to-end project execution where you want the PM to drive.
+
+| | `gt crew` (direct) | `gt mayor attach` (orchestrated) |
+|---|---|---|
+| **Control** | You drive | Mayor drives |
+| **Scope** | One agent at a time | Full team coordination |
+| **Handoffs** | Manual | Automatic |
+| **Best for** | Focused work on a single phase | End-to-end project execution |
 
 The flow once started:
 
@@ -180,7 +270,7 @@ gt sling <bead-id> my-project --agent frontend
 -> You review at milestones only
 ```
 
-### Step 9: Verify health
+### Step 10: Verify health
 
 ```bash
 gt doctor
@@ -196,7 +286,12 @@ Configuration files and settings referenced by the steps above.
 
 ### agents.json (agent presets)
 
-Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/settings/` is):
+Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/settings/` is).
+
+> **Note:** Gastown runs agent commands from the rig directory, not `GT_ROOT`.
+> The `bash -c` wrapper resolves `bin/claude-agent` via `$GT_ROOT` so the
+> wrapper is found regardless of the working directory. The `exec` ensures the
+> final process is `claude`, so `process_names` detection still works.
 
 ```json
 {
@@ -204,8 +299,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
   "agents": {
     "researcher": {
       "name": "researcher",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/researcher.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/researcher.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -215,8 +310,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "developer": {
       "name": "developer",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/developer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/developer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -226,8 +321,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "project_manager": {
       "name": "project_manager",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/project_manager.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/project_manager.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -237,8 +332,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "reviewer": {
       "name": "reviewer",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/reviewer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/reviewer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -248,8 +343,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "business_analyst": {
       "name": "business_analyst",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/business_analyst.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/business_analyst.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -259,8 +354,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "architect": {
       "name": "architect",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/architect.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/roles/architect.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -270,8 +365,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "backend": {
       "name": "backend",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/backend_developer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/backend_developer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -281,8 +376,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "frontend": {
       "name": "frontend",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/frontend_developer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/frontend_developer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -292,8 +387,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "mobile": {
       "name": "mobile",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/mobile_app_developer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/mobile_app_developer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -303,8 +398,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "devops": {
       "name": "devops",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/devops_engineer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/devops_engineer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -314,8 +409,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "qa": {
       "name": "qa",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/qa_automation_engineer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/qa_automation_engineer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -325,8 +420,8 @@ Paste into `~/projects/gt/settings/agents.json` (or wherever your `GT_ROOT/setti
     },
     "security": {
       "name": "security",
-      "command": "claude",
-      "args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/security_developer.md"],
+      "command": "bash",
+      "args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "zbik-agents/specialists/security_developer.md"],
       "process_names": ["claude", "node"],
       "session_id_env": "CLAUDE_SESSION_ID",
       "resume_flag": "--resume",
@@ -463,10 +558,10 @@ Gastown automatically sets these per agent session:
 
 All agents use **Claude Opus 4.6** (`claude-opus-4-6`) by default.
 
-The model is set in `agents.json` via the `--model` argument:
+The model is set in `agents.json` via the `--model` argument inside the args array:
 
 ```json
-"args": ["--model", "claude-opus-4-6", "--append-system-prompt-file", "..."]
+"args": ["-c", "exec \"$GT_ROOT/bin/claude-agent\" \"$@\"", "--", "--model", "claude-opus-4-6", "--append-system-prompt-file", "..."]
 ```
 
 | `--model` value | Model | Notes |

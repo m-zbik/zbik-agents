@@ -120,11 +120,17 @@ git submodule update --init --recursive
 **Step 5:** To update agents to a new version:
 
 ```bash
-cd zbik-agents
-git pull origin main
-cd ..
+cd your-project
+git submodule update --remote zbik-agents
 git add zbik-agents
 git commit -m "Update zbik-agents to latest"
+```
+
+**Step 6:** When teammates pull and need the updated submodule:
+
+```bash
+git pull
+git submodule update --init --recursive
 ```
 
 **Pros:** Versioned, shared across team, easy to update.
