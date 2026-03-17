@@ -48,6 +48,8 @@ zbik-agents/
 |   |-- security_developer.md            Auth, encryption, STRIDE threat modeling.
 |
 |-- INTEGRATION-CLAUDE-CODE.md       <-- Setup guide: how to add zbik-agents to Claude Code
+|-- INTEGRATION-GITHUB-COPILOT.md   <-- Setup guide: how to add zbik-agents to GitHub Copilot
+|-- INTEGRATION-OPENCODE.md         <-- Setup guide: how to add zbik-agents to OpenCode
 |-- INTEGRATION-GASTOWN.md           <-- Setup guide: how to add zbik-agents to Gastown
 |-- CLAUDE-vs-GASTOWN.md             <-- Comparison: when to use which platform
 ```
@@ -55,7 +57,7 @@ zbik-agents/
 ## How to Read
 
 **If you want to start using zbik-agents right now:**
-1. Read `INTEGRATION-CLAUDE-CODE.md` (for Claude Code) or `INTEGRATION-GASTOWN.md` (for Gastown)
+1. Read `INTEGRATION-CLAUDE-CODE.md` (for Claude Code), `INTEGRATION-GITHUB-COPILOT.md` (for Copilot), `INTEGRATION-OPENCODE.md` (for OpenCode), or `INTEGRATION-GASTOWN.md` (for Gastown)
 2. Follow the "How to Create a New Project" section
 3. Start Claude Code and describe your project
 
@@ -144,7 +146,7 @@ git submodule update --init --recursive
 
 ## Key Design Decisions
 
-- **Same agent files work with both Claude Code and Gastown** -- only the orchestration layer changes
+- **Same agent files work with Claude Code, GitHub Copilot, OpenCode, and Gastown** -- only the orchestration layer changes
 - **Reviewer is always in the loop** -- challenges independently at every phase, not just at the end
 - **Three-tier solutions everywhere** -- BA, Architect, and PM all produce simplified, transitional, and full-flagged options
 - **DevOps before development** -- git flow, Docker, Makefile, CI/CD, Helm are set up before the first line of code
