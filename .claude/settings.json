@@ -1,0 +1,29 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'QUALITY GATE -- before marking complete, verify: (1) strong typing on ALL function signatures (params + return types), (2) unit tests for every function, (3) docstrings with Args, Returns, Raises, and Example sections, (4) no bare except/catch -- specific exceptions only, (5) no hardcoded secrets or magic numbers.'"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'IDLE CHECK -- before going idle, confirm: (1) all tests pass, (2) all functions have type annotations and docstrings, (3) no TODO/FIXME left unaddressed, (4) code reviewed against _base.md constitutional guardrails.'"
+          }
+        ]
+      }
+    ]
+  }
+}

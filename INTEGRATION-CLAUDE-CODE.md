@@ -15,10 +15,11 @@ How to use `zbik-agents` with Claude Code (CLI, subagents, Agent SDK, and hooks)
   - [Version B: With GitHub Remote](#version-b-with-github-remote)
 - [Using Agents in Claude Code](#using-agents-in-claude-code)
   - [1. Subagents (recommended)](#1-subagents-recommended)
-  - [2. CLAUDE.md (project-wide rules)](#2-claudemd-project-wide-rules)
-  - [3. CLI Flags (one-off sessions)](#3-cli-flags-one-off-sessions)
-  - [4. Hooks (context injection)](#4-hooks-context-injection)
-  - [5. Agent SDK (programmatic)](#5-agent-sdk-programmatic)
+  - [2. Agent Teams (experimental -- multi-session)](#2-agent-teams-experimental----multi-session)
+  - [3. CLAUDE.md (project-wide rules)](#3-claudemd-project-wide-rules)
+  - [4. CLI Flags (one-off sessions)](#4-cli-flags-one-off-sessions)
+  - [5. Hooks (context injection)](#5-hooks-context-injection)
+  - [6. Agent SDK (programmatic)](#6-agent-sdk-programmatic)
 - [Model Configuration](#model-configuration)
 - [Orchestration Flow](#orchestration-flow)
 - [Quick Reference](#quick-reference)
@@ -597,7 +598,237 @@ Manage agents interactively with `/agents`.
 
 ---
 
-### 2. CLAUDE.md (project-wide rules)
+### 2. Agent Teams (experimental -- multi-session)
+
+> **Requires:** Claude Code v2.1.32+, experimental flag enabled.
+
+Agent Teams are fundamentally different from subagents. While subagents run within
+a single session and report results back to the caller, Agent Teams spawn **independent
+Claude Code instances** that coordinate through a shared task list and communicate
+directly with each other.
+
+| | Subagents | Agent Teams |
+|---|---|---|
+| **Context** | Own context; results return to caller | Own context; fully independent |
+| **Communication** | Report back to main agent only | Teammates message each other directly |
+| **Coordination** | Main agent manages all work | Shared task list with self-coordination |
+| **Best for** | Focused tasks where only the result matters | Complex work requiring discussion and collaboration |
+| **Token cost** | Lower: results summarized back | Higher: each teammate is a separate instance |
+
+**Use subagents** (section 1 above) for the sequential, gated workflow defined in CLAUDE.md.
+**Use Agent Teams** when teammates need to share findings, challenge each other, and
+coordinate on their own -- especially for parallel research, review, and implementation.
+
+#### Setup: Enable Agent Teams
+
+The experimental flag and quality-gate hooks are already configured in this repository's
+`.claude/settings.json`. If you are setting up a **new project**, copy the config below
+into your project's `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'QUALITY GATE -- before marking complete, verify: (1) strong typing on ALL function signatures (params + return types), (2) unit tests for every function, (3) docstrings with Args, Returns, Raises, and Example sections, (4) no bare except/catch -- specific exceptions only, (5) no hardcoded secrets or magic numbers.'"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'IDLE CHECK -- before going idle, confirm: (1) all tests pass, (2) all functions have type annotations and docstrings, (3) no TODO/FIXME left unaddressed, (4) code reviewed against _base.md constitutional guardrails.'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### Setup CLI Command
+
+Run this in your project directory to tell Claude Code to configure Agent Teams
+with the full zbik-agents team structure. Copy and paste the entire block:
+
+```bash
+claude -p "Set up Agent Teams for this project using zbik-agents. Do the following:
+
+1. Verify .claude/settings.json has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in env,
+   plus TaskCompleted and TeammateIdle hooks enforcing zbik-agents coding standards
+   (strong typing, unit tests, docstrings, no bare except, no hardcoded secrets).
+   If the settings file is missing or incomplete, create/update it.
+
+2. Ensure .claude/agents/ subagent files exist for all 13 agents
+   (product_owner, business_analyst, researcher, reviewer, architect,
+   security_developer, devops_engineer, project_manager, backend_developer,
+   frontend_developer, mobile_app_developer, qa_automation_engineer, developer).
+   Each file must import @../../zbik-agents/_base.md and its role/specialist .md.
+
+3. Confirm the setup by listing all agent files and the settings.json contents.
+
+The team is organized into 4 phase-based compositions:
+
+Phase 1 -- Research & Spec (3 teammates):
+  business_analyst, researcher, reviewer
+
+Phase 2 -- Architecture & Security (4 teammates):
+  architect, security_developer, devops_engineer, reviewer
+
+Phase 3 -- Delivery Planning (2 teammates):
+  project_manager, reviewer
+
+Phase 4 -- Implementation (5 teammates, varies by project):
+  backend_developer, frontend_developer, qa_automation_engineer,
+  devops_engineer, reviewer
+
+product_owner maps to the team lead (the human-interactive session).
+reviewer is spawned in every phase as the persistent critic."
+```
+
+#### zbik-agents Team Mapping
+
+The 13 zbik-agents map to Agent Teams roles as follows. The human-interactive session
+acts as the team lead; teammates are spawned per phase.
+
+| zbik-agent | Team Role | Phase(s) | Notes |
+|---|---|---|---|
+| **product_owner** | Team lead (human session) | All | Vision, backlog, stakeholder alignment -- the human + lead session |
+| **business_analyst** | Teammate | 1: Research | Deep research, functional spec, 3 solution tiers |
+| **researcher** | Teammate | 1: Research | Tech research, framework evaluation |
+| **reviewer** | Teammate | 1-4: All | Persistent critic -- spawned in every phase team |
+| **architect** | Teammate | 2: Design | System design, diagrams, tech justification |
+| **security_developer** | Teammate | 2: Design | Threat modeling (STRIDE), auth, encryption |
+| **devops_engineer** | Teammate | 2: Design, 4: Implement | Rollout planning, CI/CD, Docker, K8s, git flow |
+| **project_manager** | Teammate | 3: Planning | Delivery plans, sprint breakdown, team coordination |
+| **backend_developer** | Teammate | 4: Implement | Python, Java, Rust, C, C++, SQL |
+| **frontend_developer** | Teammate | 4: Implement | TypeScript, React, Next.js |
+| **mobile_app_developer** | Teammate | 4: Implement | Swift, Kotlin, Flutter, React Native |
+| **qa_automation_engineer** | Teammate | 4: Implement | Test frameworks, automation, CI integration |
+| **developer** | Teammate | 4: Implement | General-purpose, used when no specialist fits |
+
+#### Phase-Based Team Compositions
+
+Spawn a new team per phase. Each team is small (3-5 teammates) to keep coordination
+manageable and token cost reasonable. Clean up the previous phase's team before
+starting the next.
+
+**Phase 1 -- Research & Spec:**
+
+```text
+Create an agent team for research. Spawn 3 teammates:
+- business_analyst: research the problem space, produce functional spec with 3 tiers
+- researcher: evaluate technical options, frameworks, and prior art
+- reviewer: challenge all findings, verify sources, push back on assumptions
+Have them share findings and challenge each other. Require plan approval.
+```
+
+**Phase 2 -- Architecture & Security:**
+
+```text
+Create an agent team for architecture design. Spawn 4 teammates:
+- architect: create 3 design tiers with diagrams from the approved spec
+- security_developer: threat model (STRIDE) and harden each tier
+- devops_engineer: plan rollout strategy, CI/CD, infrastructure
+- reviewer: challenge all design decisions
+Architect and security_developer should iterate until the design is secure.
+Require plan approval before any changes.
+```
+
+**Phase 3 -- Delivery Planning:**
+
+```text
+Create an agent team for delivery planning. Spawn 2 teammates:
+- project_manager: create 3-tier delivery plan with milestones and sprint breakdown
+- reviewer: challenge the plan, verify resource estimates, check for gaps
+PM should document all external sources: repos, datasets (with sizes), APIs.
+```
+
+**Phase 4 -- Implementation (example: full-stack web app):**
+
+```text
+Create an agent team for sprint implementation. Spawn 5 teammates:
+- backend_developer: implement server-side code, APIs, database schemas
+- frontend_developer: implement UI components and pages
+- qa_automation_engineer: write test briefs before devs start, then automate tests
+- devops_engineer: set up git flow, Dockerfiles, docker-compose, Makefile, CI/CD
+- reviewer: review all code for types, tests, docstrings, security
+Each teammate owns separate files to avoid conflicts. Use sonnet for specialists.
+```
+
+#### Quality Gates with Hooks
+
+The `TaskCompleted` and `TeammateIdle` hooks are configured in `.claude/settings.json`
+and enforce zbik-agents coding standards automatically:
+
+- **`TaskCompleted`** -- fires when any teammate marks a task complete. Reminds them to
+  verify: strong typing, unit tests, docstrings (Args/Returns/Raises/Example),
+  specific exception handling, no hardcoded secrets or magic numbers.
+
+- **`TeammateIdle`** -- fires when a teammate is about to go idle. Reminds them to
+  confirm: all tests pass, all functions typed and documented, no unaddressed
+  TODO/FIXME, code reviewed against `_base.md` constitutional guardrails.
+
+If the hook exits with code 2, the task is **not** marked complete and the teammate
+is sent back to fix the issues. This enforces the quality gates without human
+intervention during sprints.
+
+#### Display Modes
+
+| Mode | Setting | Best for |
+|---|---|---|
+| In-process (default) | `"teammateMode": "in-process"` | Any terminal; use Shift+Down to cycle teammates |
+| Split panes | `"teammateMode": "tmux"` | tmux or iTerm2; see all teammates simultaneously |
+
+To use split panes, add to `.claude/settings.json`:
+
+```json
+{
+  "teammateMode": "tmux"
+}
+```
+
+Or pass as a flag for a single session:
+
+```bash
+claude --teammate-mode tmux
+```
+
+#### Agent Teams vs Subagents: When to Use Which
+
+| Scenario | Use |
+|---|---|
+| Sequential gated workflow (Phase 1 -> 2 -> 3 -> 4) | Subagents |
+| BA writes spec, reviewer challenges it, you approve | Subagents |
+| 3 reviewers examining a PR from different angles simultaneously | Agent Teams |
+| Backend + frontend + QA implementing a feature in parallel | Agent Teams |
+| Debugging with competing hypotheses | Agent Teams |
+| Quick one-off research or code review | Subagents |
+
+#### Limitations (as of v2.1.32)
+
+- Experimental: enable with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` flag
+- No session resumption for in-process teammates
+- One team per session; clean up before starting a new team
+- No nested teams (teammates cannot spawn their own teams)
+- All teammates inherit the lead's permission mode at spawn time
+- Split panes require tmux or iTerm2 (not VS Code terminal, Windows Terminal, or Ghostty)
+- Task status can lag; monitor and nudge if tasks appear stuck
+
+---
+
+### 3. CLAUDE.md (project-wide rules)
 
 Embed shared coding standards from `_base.md` directly in your project's CLAUDE.md.
 
@@ -619,7 +850,7 @@ The `@zbik-agents/_base.md` import pulls in the constitutional guardrails (typin
 
 ---
 
-### 3. CLI Flags (one-off sessions)
+### 4. CLI Flags (one-off sessions)
 
 #### Append Agent Context to Default Prompt
 
@@ -649,7 +880,7 @@ claude -p "Implement the user service in Python" \
 
 ---
 
-### 4. Hooks (context injection)
+### 5. Hooks (context injection)
 
 Use hooks to automatically inject agent context at specific lifecycle points.
 
@@ -706,7 +937,7 @@ Use hooks to automatically inject agent context at specific lifecycle points.
 
 ---
 
-### 5. Agent SDK (programmatic)
+### 6. Agent SDK (programmatic)
 
 Use the Claude Agent SDK for custom orchestration.
 
