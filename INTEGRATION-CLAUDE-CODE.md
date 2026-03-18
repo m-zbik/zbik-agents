@@ -685,11 +685,15 @@ reviewer is spawned in every phase as the persistent critic.
 PROMPT
 ```
 
-**Step 2:** Run Claude with the prompt file:
+**Step 2:** Run Claude with the prompt file (must pre-allow tools for non-interactive mode):
 
 ```bash
-claude -p "$(cat /tmp/zbik-teams-setup.txt)"
+claude -p "$(cat /tmp/zbik-teams-setup.txt)" --allowedTools 'Edit,Write,Read,Bash,Glob,Grep'
 ```
+
+> **Note:** `claude -p` runs non-interactively -- without `--allowedTools`, Claude
+> hangs silently waiting for permission approvals it cannot receive. Alternatively,
+> start an interactive session with `claude` and paste the prompt from the file.
 
 #### zbik-agents Team Mapping
 
