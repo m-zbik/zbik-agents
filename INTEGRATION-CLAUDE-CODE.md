@@ -659,41 +659,30 @@ into your project's `.claude/settings.json`:
 
 #### Setup CLI Command
 
-Run these two commands in your project directory. The first saves the prompt to a
-file, the second passes it to Claude Code:
+Start an interactive Claude Code session in your project directory and paste the
+setup prompt. Interactive mode shows progress and asks for permissions as it goes.
 
-**Step 1:** Create the setup prompt file:
-
-```bash
-cat > /tmp/zbik-teams-setup.txt << 'PROMPT'
-Set up Agent Teams for this project using zbik-agents. Do the following:
-
-1. Verify .claude/settings.json has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in env, plus TaskCompleted and TeammateIdle hooks enforcing zbik-agents coding standards (strong typing, unit tests, docstrings, no bare except, no hardcoded secrets). If the settings file is missing or incomplete, create/update it.
-
-2. Ensure .claude/agents/ subagent files exist for all 13 agents (product_owner, business_analyst, researcher, reviewer, architect, security_developer, devops_engineer, project_manager, backend_developer, frontend_developer, mobile_app_developer, qa_automation_engineer, developer). Each file must import @../../zbik-agents/_base.md and its role/specialist .md.
-
-3. Confirm the setup by listing all agent files and the settings.json contents.
-
-The team is organized into 4 phase-based compositions:
-- Phase 1 Research & Spec (3 teammates): business_analyst, researcher, reviewer
-- Phase 2 Architecture & Security (4 teammates): architect, security_developer, devops_engineer, reviewer
-- Phase 3 Delivery Planning (2 teammates): project_manager, reviewer
-- Phase 4 Implementation (5 teammates, varies by project): backend_developer, frontend_developer, qa_automation_engineer, devops_engineer, reviewer
-
-product_owner maps to the team lead (the human-interactive session).
-reviewer is spawned in every phase as the persistent critic.
-PROMPT
-```
-
-**Step 2:** Run Claude with the prompt file (must pre-allow tools for non-interactive mode):
+**Step 1:** Start Claude Code:
 
 ```bash
-claude -p "$(cat /tmp/zbik-teams-setup.txt)" --allowedTools 'Edit,Write,Read,Bash,Glob,Grep'
+claude
 ```
 
-> **Note:** `claude -p` runs non-interactively -- without `--allowedTools`, Claude
-> hangs silently waiting for permission approvals it cannot receive. Alternatively,
-> start an interactive session with `claude` and paste the prompt from the file.
+**Step 2:** Paste this prompt (single line -- safe to paste into any terminal):
+
+```
+Set up Agent Teams for this project using zbik-agents. Verify .claude/settings.json has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in env plus TaskCompleted and TeammateIdle hooks enforcing coding standards (strong typing, unit tests, docstrings, no bare except, no hardcoded secrets). Create .claude/agents/ subagent files for all 13 agents (product_owner, business_analyst, researcher, reviewer, architect, security_developer, devops_engineer, project_manager, backend_developer, frontend_developer, mobile_app_developer, qa_automation_engineer, developer). Each file must import @../../zbik-agents/_base.md and its role/specialist md file. Confirm by listing all agent files and settings.json contents.
+```
+
+**Alternative: non-interactive mode** (for CI/scripting):
+
+```bash
+claude -p 'Set up Agent Teams for this project using zbik-agents. Verify .claude/settings.json has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in env plus TaskCompleted and TeammateIdle hooks. Create .claude/agents/ subagent files for all 13 agents. Each file must import @../../zbik-agents/_base.md and its role/specialist md file. List all created files when done.' --allowedTools 'Edit,Write,Read,Bash,Glob,Grep'
+```
+
+> **Note:** `claude -p` shows no progress -- it stays silent until finished (can take
+> several minutes). Without `--allowedTools`, it hangs forever waiting for permission
+> approvals it cannot receive. Interactive mode (`claude`) is recommended for first-time setup.
 
 #### zbik-agents Team Mapping
 
